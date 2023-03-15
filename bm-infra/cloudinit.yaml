@@ -1,0 +1,43 @@
+#cloud-config
+packages:
+  - openssh-server
+  - snapd
+locale: C.UTF-8
+users:
+  - name: ubuntu
+    lock_passwd: true
+    shell: /bin/bash
+    groups: [sudo, microk8s]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_import_id:
+      - lp:gboutry
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQDykUBpFqkcp6mWISwT9Z1GZre+d3m6GHLTNf1bPmPrpMM5KJeYDl5lkbP9kFVoEZGHOOIMTcgqb3ZuT8TUiVwZQRhKzUq7K79yHH2L4DyLcA/ssHwCFicsovKwqvlA4q33TDsH4EA7GD59FWKMDmlZX0xzcJj9tmWFBQ5M0t3QKw== gboutry@infinity-book
+  - name: snap_microk8s
+    lock_passwd: true
+    groups: [snap_microk8s]
+    shell: /bin/false
+runcmd:
+  - cp -r /etc/skel/. /home/ubuntu
+  - chown -R ubuntu:ubuntu /home/ubuntu
+write_files:
+  - content: |
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAlwAAAAdzc2gtcn
+      NhAAAAAwEAAQAAAIEA8pFAaRapHKepliEsE/WdRma3vnd5uhhy0zX9Wz5j66TDOSiXmA5e
+      ZZGz/ZBVaBGRhzjiDE3IKm92bk/E1IlcGUEYSs1Kuyu/chx9i+A8i3AP7LB8AhYnLKLysK
+      r5QOKt90w7B+BAOxg+fRVijA5pWV9Mc3CY/bZlhQUOTNLd0CsAAAIQU5EzvFORM7wAAAAH
+      c3NoLXJzYQAAAIEA8pFAaRapHKepliEsE/WdRma3vnd5uhhy0zX9Wz5j66TDOSiXmA5eZZ
+      Gz/ZBVaBGRhzjiDE3IKm92bk/E1IlcGUEYSs1Kuyu/chx9i+A8i3AP7LB8AhYnLKLysKr5
+      QOKt90w7B+BAOxg+fRVijA5pWV9Mc3CY/bZlhQUOTNLd0CsAAAADAQABAAAAgQDjnFiMQ6
+      88LDd9oHLz561Eum4AU6vta7OTbT3nuIuaOmjV4bkd/Z2mQSpb7Gu304RzFnVGhlYlO6It
+      sLxJkvrPA+qKzOYCitNTojBQsnZzhSKhjOydOrtYQOfvpcPKY0ehbVqdOVhJWq73rdsMys
+      1LB9tqqRMTKKewCzDe4pAoAQAAAEEA+yF876HUCiKgpEjqAFnAElToDJuZaPIi0iiWkZOR
+      U/lCzrlFNys2WU0j6oBXC5jl6mfBoa2hTvlYOvhpjHOFCgAAAEEA/9uAColkDCffBYOJf9
+      kwu+bfdRj11zq5WujeiJRVzYvlbQ3cBTpy4k9hz1Y5zzFaYN/XIVyJF9VprkDlvzTJqwAA
+      AEEA8rPbA9NtGZK3//KjJtgW81gDrQY5NSFSsYITWeVeA9cm3X6WG9+0nbzxQixyl9RLxO
+      IXz8MD6BWD/5P6y2WTgQAAABVnYm91dHJ5QGluZmluaXR5LWJvb2sBAgME
+      -----END OPENSSH PRIVATE KEY-----
+    path: /home/ubuntu/.ssh/id_rsa
+    owner: ubuntu:ubuntu
+    permissions: '0600'

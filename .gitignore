@@ -1,0 +1,6 @@
+kubeconfig
+cloud.yaml
+*.hcl
+*.tfstate*
+*.terraform
+*.auto.tfvars.json
