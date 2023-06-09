@@ -1,0 +1,92 @@
+#cloud-config
+hostname: bm${index}
+fqdn: bm${index}.lxd
+prefer_fqdn_over_hostname: true
+packages:
+  - openssh-server
+  - snapd
+  - nfs-common
+  - rsync
+locale: C.UTF-8
+users:
+  - name: ubuntu
+    lock_passwd: true
+    shell: /bin/bash
+    groups: [sudo]
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQD07uhb+OrM5QyLZboqidjsdJYb2pTlkoMbBXnzNpcBOTyojsZoXkTkG4KwxA5cPByBuKF95h2aHBmUTS94LyqINzmgFhjLtI4e/Ehk/Egwea0rqkwyMoF4Ry+e0kfB2fgxuYWhJq+lhmIm9LEc8McsbDpJhx9CJ0eoPVYsJ12raQ== gboutry@infinity-book
+write_files:
+  - content: |
+      #!/bin/bash
+      set -x
+      cd /home/ubuntu
+      sudo apt install --yes linux-modules-extra-$(uname -r)
+      cp /usr/local/share/preseed.yaml /home/ubuntu/preseed.yaml
+
+      mkdir -p ~/.local/share
+      sudo snap install jq
+
+      wget http://10.206.54.1:8000/k9s
+      sudo install k9s /usr/local/bin
+
+      # sudo snap install openstack --channel 2023.1/edge
+      wget http://10.206.54.1:8000/openstack.snap
+      sudo snap install openstack.snap --dangerous
+      # sudo snap set openstack cache.ghcr-io=10.206.54.226:5000
+      # sudo snap set openstack cache.docker-io=10.206.54.230:5000
+      sudo snap connect openstack:dot-local-share-juju
+      sudo snap connect openstack:ssh-keys
+      sudo snap connect openstack:dot-config-openstack
+      sudo snap set openstack daemon.debug=true
+      openstack.sunbeam prepare-node-script | bash -x
+      sudo snap connect openstack:juju-bin juju:juju-bin
+    path: /usr/local/share/init.sh
+    owner: root:root
+    permissions: '0555'
+  - content: |
+      bootstrap:
+        # Management CIDRs shared by the hosts (separated by comma)
+        management_cidr: 10.206.54.0/24
+      addons:
+        # MetalLB address allocation range
+        metallb: 10.206.54.240-10.206.54.250
+      user:
+        # Populate OpenStack cloud with demo user, default images, flavors etc
+        run_demo_setup: True
+        # Username to use for access to OpenStack
+        username: demo
+        # Password to use for access to OpenStack
+        password: demo
+        # Network range to use for project network
+        cidr: 192.168.122.0/24
+        # List of nameservers guests should use for DNS resolution
+        nameservers: 10.206.54.1
+        # Enable ping and SSH access to instances?
+        security_group_rules: True
+        # Local or remote access to VMs
+        remote_access_location: local
+      external_network:
+        # CIDR of network to use for external networking
+        cidr: 10.20.20.0/24
+        # IP address of default gateway for external network
+        gateway: 10.20.20.1
+        # Start of IP allocation range for external network
+        start: 10.20.20.10
+        # End of IP allocation range for external network
+        end: 10.20.20.240
+        # Network type for access to external network
+        network_type: flat
+        # VLAN ID to use for external network
+        # segmentation_id: 
+        # Free network interface that will be configured for external traffic
+        nic: enp6s0
+      # MicroCeph config
+      microceph_config:
+        bm${index}.lxd:
+          osd_devices: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_osd${index * 3},/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_osd${index * 3 + 1},/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_osd${index * 3 + 2}
+    owner: root:root
+    permissions: '0444'
+    path: /usr/local/share/preseed.yaml
+runcmd:
+  - sudo -u ubuntu bash /usr/local/share/init.sh
