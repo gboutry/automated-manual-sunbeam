@@ -13,19 +13,19 @@ provider "lxd" {
 }
 
 variable "nb_vm" {
-  default = 2
+  default = 1
 }
 
-# resource "lxd_volume" "osd" {
-#   count        = 3 * var.nb_vm
-#   name         = "osd${count.index}"
-#   pool         = "default"
-#   type         = "custom"
-#   content_type = "block"
-#   config = {
-#     size = "5GiB"
-#   }
-# }
+resource "lxd_volume" "osd" {
+  count        = 3 * var.nb_vm
+  name         = "osd${count.index}"
+  pool         = "default"
+  type         = "custom"
+  content_type = "block"
+  config = {
+    size = "50GiB"
+  }
+}
 
 resource "lxd_network" "baremetal" {
   name = "bmbr"
@@ -37,15 +37,40 @@ resource "lxd_network" "baremetal" {
   }
 }
 
+# resource "lxd_profile" "microk8s" {
+#   name = "microk8s"
+
+#   config = {
+#     "linux.kernel_modules" = "ip_vs,ip_vs_rr,ip_vs_wrr,ip_vs_sh,ip_tables,ip6_tables,netlink_diag,nf_nat,overlay,br_netfilter"
+#     "raw.lxc"              = <<-EOT
+#       lxc.apparmor.profile=unconfined
+#       lxc.mount.auto=proc:rw sys:rw cgroup:rw
+#       lxc.cgroup.devices.allow=a
+#       lxc.cap.drop=
+#     EOT
+#     "security.nesting"     = "true"
+#     "security.privileged"  = "true"
+#   }
+#   device {
+#     name = "kmsg"
+#     type = "unix-char"
+#     properties = {
+#     path = "/dev/kmsg"
+#     source = "/dev/kmsg"
+#     }
+#   }
+# }
+
 resource "lxd_container" "baremetal" {
   count = var.nb_vm
   name  = "bm${count.index}"
   image = "images:ubuntu/22.04/cloud"
   type  = "virtual-machine"
 
+  # profiles = [lxd_profile.microk8s.name]
   limits = {
-    cpu    = "4"
-    memory = "14GiB"
+    cpu    = "12"
+    memory = "31GiB"
   }
 
   config = {
@@ -77,36 +102,36 @@ resource "lxd_container" "baremetal" {
     properties = {
       path = "/"
       pool = "default"
-      size = "30GB"
+      size = "150GB"
     }
   }
 
-  # device {
-  #   name = lxd_volume.osd[count.index * 3].name
-  #   type = "disk"
-  #   properties = {
-  #     pool   = "default"
-  #     source = lxd_volume.osd[count.index * 3].name
-  #   }
-  # }
+  device {
+    name = lxd_volume.osd[count.index * 3].name
+    type = "disk"
+    properties = {
+      pool   = "default"
+      source = lxd_volume.osd[count.index * 3].name
+    }
+  }
 
-  # device {
-  #   name = lxd_volume.osd[count.index * 3 + 1].name
-  #   type = "disk"
-  #   properties = {
-  #     pool   = "default"
-  #     source = lxd_volume.osd[count.index * 3 + 1].name
-  #   }
-  # }
+  device {
+    name = lxd_volume.osd[count.index * 3 + 1].name
+    type = "disk"
+    properties = {
+      pool   = "default"
+      source = lxd_volume.osd[count.index * 3 + 1].name
+    }
+  }
 
-  # device {
-  #   name = lxd_volume.osd[count.index * 3 + 2].name
-  #   type = "disk"
-  #   properties = {
-  #     pool   = "default"
-  #     source = lxd_volume.osd[count.index * 3 + 2].name
-  #   }
-  # }
+  device {
+    name = lxd_volume.osd[count.index * 3 + 2].name
+    type = "disk"
+    properties = {
+      pool   = "default"
+      source = lxd_volume.osd[count.index * 3 + 2].name
+    }
+  }
 }
 
 output "baremetal_ip" {

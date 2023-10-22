@@ -21,26 +21,29 @@ write_files:
       #!/bin/bash
       set -x
       cd /home/ubuntu
-      sudo apt install --yes linux-modules-extra-$(uname -r)
+      # sudo apt install --yes linux-modules-extra-$(uname -r)
       cp /usr/local/share/preseed.yaml /home/ubuntu/preseed.yaml
+      echo "export KUBECONFIG=/home/ubuntu/config" >> .bashrc
 
       mkdir -p ~/.local/share
       sudo snap install jq
+      sudo snap install jhack --edge
 
-      wget http://10.206.54.1:8000/k9s
+      wget -q http://10.206.54.1:8000/k9s
       sudo install k9s /usr/local/bin
 
       # sudo snap install openstack --channel 2023.1/edge
-      wget http://10.206.54.1:8000/openstack.snap
+      wget -q http://10.206.54.1:8000/openstack.snap
       sudo snap install openstack.snap --dangerous
-      # sudo snap set openstack cache.ghcr-io=10.206.54.226:5000
-      # sudo snap set openstack cache.docker-io=10.206.54.230:5000
       sudo snap connect openstack:dot-local-share-juju
       sudo snap connect openstack:ssh-keys
       sudo snap connect openstack:dot-config-openstack
       sudo snap set openstack daemon.debug=true
       openstack.sunbeam prepare-node-script | bash -x
       sudo snap connect openstack:juju-bin juju:juju-bin
+      sudo snap alias openstack.sunbeam sunbeam
+
+      sudo snap connect jhack:dot-local-share-juju
     path: /usr/local/share/init.sh
     owner: root:root
     permissions: '0555'
@@ -50,6 +53,7 @@ write_files:
         management_cidr: 10.206.54.0/24
       addons:
         # MetalLB address allocation range
+        # metallb: 10.206.54.240-10.206.54.250
         metallb: 10.206.54.240-10.206.54.250
       user:
         # Populate OpenStack cloud with demo user, default images, flavors etc
