@@ -5,8 +5,6 @@ prefer_fqdn_over_hostname: true
 packages:
   - openssh-server
   - snapd
-  - nfs-common
-  - rsync
 locale: C.UTF-8
 users:
   - name: ubuntu
@@ -22,7 +20,7 @@ write_files:
       set -x
       cd /home/ubuntu
       # sudo apt install --yes linux-modules-extra-$(uname -r)
-      cp /usr/local/share/preseed.yaml /home/ubuntu/preseed.yaml
+      cp /usr/local/share/manifest.yaml /home/ubuntu/manifest.yaml
       echo "export KUBECONFIG=/home/ubuntu/config" >> .bashrc
 
       mkdir -p ~/.local/share
@@ -32,7 +30,7 @@ write_files:
       wget -q http://10.206.54.1:8000/k9s
       sudo install k9s /usr/local/bin
 
-      # sudo snap install openstack --channel 2023.1/edge
+      # sudo snap install openstack --channel 2023.2/candidate
       wget -q http://10.206.54.1:8000/openstack.snap
       sudo snap install openstack.snap --dangerous
       sudo snap connect openstack:dot-local-share-juju
@@ -46,51 +44,136 @@ write_files:
       sudo snap connect jhack:dot-local-share-juju
     path: /usr/local/share/init.sh
     owner: root:root
-    permissions: '0555'
+    permissions: "0555"
+  - path: /etc/apt/apt.conf.d/00-proxy
+    permissions: 0640
+    owner: root
+    content: |
+      Acquire::http { Proxy "http://squid.lxd:3128"; };
+      Acquire::https { Proxy "http://squid.lxd:3128"; };
+      Acquire::http::Pipeline-Depth "23";
+      Acquire::Languages "none";
   - content: |
-      bootstrap:
-        # Management CIDRs shared by the hosts (separated by comma)
-        management_cidr: 10.206.54.0/24
-      addons:
-        # MetalLB address allocation range
-        # metallb: 10.206.54.240-10.206.54.250
-        metallb: 10.206.54.240-10.206.54.250
-      user:
-        # Populate OpenStack cloud with demo user, default images, flavors etc
-        run_demo_setup: True
-        # Username to use for access to OpenStack
-        username: demo
-        # Password to use for access to OpenStack
-        password: demo
-        # Network range to use for project network
-        cidr: 192.168.122.0/24
-        # List of nameservers guests should use for DNS resolution
-        nameservers: 10.206.54.1
-        # Enable ping and SSH access to instances?
-        security_group_rules: True
-        # Local or remote access to VMs
-        remote_access_location: local
-      external_network:
-        # CIDR of network to use for external networking
-        cidr: 10.20.20.0/24
-        # IP address of default gateway for external network
-        gateway: 10.20.20.1
-        # Start of IP allocation range for external network
-        start: 10.20.20.10
-        # End of IP allocation range for external network
-        end: 10.20.20.240
-        # Network type for access to external network
-        network_type: flat
-        # VLAN ID to use for external network
-        # segmentation_id: 
-        # Free network interface that will be configured for external traffic
-        nic: enp6s0
-      # MicroCeph config
-      microceph_config:
-        bm${index}.lxd:
-          osd_devices: /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_osd${index * 3},/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_osd${index * 3 + 1},/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_lxd_osd${index * 3 + 2}
+      HTTP_PROXY=http://squid.lxd:3128
+      HTTPS_PROXY=http://squid.lxd:3128
+      NO_PROXY=localhost,127.0.0.1,localhost,10.206.54.0/24,10.20.30.0/24,[fd00:56ad:9f7a:9800::1/64]
+    path: /etc/environment
     owner: root:root
-    permissions: '0444'
-    path: /usr/local/share/preseed.yaml
+    permissions: "0555"
+  - content: |
+      deployment:
+        proxy:
+          # Configure proxy for access to external network resources?
+          proxy_required: True
+          # Enter value for http_proxy:
+          http_proxy: http://squid.lxd:3128
+          # Enter value for https_proxy:
+          https_proxy: http://squid.lxd:3128
+          # Enter value for no_proxy:
+          no_proxy: localhost,127.0.0.1,localhost,10.206.54.0/24,10.20.30.0/24,[fd00:56ad:9f7a:9800::1/64]
+        bootstrap:
+          # Management CIDRs shared by the hosts (separated by comma)
+          management_cidr: 10.206.54.0/24
+        addons:
+          # MetalLB address allocation range
+          # metallb: 10.206.54.240-10.206.54.250
+          metallb: 10.206.54.240-10.206.54.250
+        user:
+          # Populate OpenStack cloud with demo user, default images, flavors etc
+          run_demo_setup: True
+          # Username to use for access to OpenStack
+          username: demo
+          # Password to use for access to OpenStack
+          password: demo
+          # Network range to use for project network
+          cidr: 192.168.122.0/24
+          # List of nameservers guests should use for DNS resolution
+          nameservers: 10.206.54.1
+          # Enable ping and SSH access to instances?
+          security_group_rules: True
+          # Local or remote access to VMs
+          remote_access_location: remote
+        external_network:
+          # CIDR of network to use for external networking
+          cidr: 10.20.30.0/24
+          # IP address of default gateway for external network
+          gateway: 10.20.30.1
+          # Start of IP allocation range for external network
+          start: 10.20.30.10
+          # End of IP allocation range for external network
+          end: 10.20.30.254
+          # Network type for access to external network
+          network_type: flat
+          # VLAN ID to use for external network
+          # segmentation_id: 
+          # Free network interface that will be configured for external traffic
+          nic: enp6s0
+        # MicroCeph config
+        microceph_config:
+          bm${index}.lxd:
+            osd_devices: /dev/disk/by-id/scsi-SQEMU_QEMU_HARDDISK_lxd_osd${index * 3},/dev/disk/by-id/scsi-SQEMU_QEMU_HARDDISK_lxd_osd${index * 3 + 1},/dev/disk/by-id/scsi-SQEMU_QEMU_HARDDISK_lxd_osd${index * 3 + 2}
+      software:
+        charms:
+          aodh-k8s:
+            channel: 2024.1/edge
+          barbican-k8s:
+            channel: 2024.1/edge
+          ceilometer-k8s:
+            channel: 2024.1/edge
+          cinder-ceph-k8s:
+            channel: 2024.1/edge
+          cinder-k8s:
+            channel: 2024.1/edge
+          designate-bind-k8s:
+            channel: 9/edge
+          designate-k8s:
+            channel: 2024.1/edge
+          glance-k8s:
+            channel: 2024.1/edge
+          gnocchi-k8s:
+            channel: 2024.1/edge
+          heat-k8s:
+            channel: 2024.1/edge
+          horizon-k8s:
+            channel: 2024.1/edge
+          keystone-k8s:
+            channel: 2024.1/edge
+          keystone-ldap-k8s:
+            channel: 2024.1/edge
+          magnum-k8s:
+            channel: 2024.1/edge
+          neutron-k8s:
+            channel: 2024.1/edge
+          nova-k8s:
+            channel: 2024.1/edge
+          octavia-k8s:
+            channel: 2024.1/edge
+          openstack-exporter-k8s:
+            channel: 2024.1/edge
+          openstack-hypervisor:
+            channel: 2024.1/edge
+            config:
+              snap-channel: 2024.1/edge
+          openstack-images-sync-k8s:
+            channel: 2024.1/edge
+          ovn-central-k8s:
+            channel: 24.03/edge
+          ovn-relay-k8s:
+            channel: 24.03/edge
+          placement-k8s:
+            channel: 2024.1/edge
+          sunbeam-clusterd:
+            channel: 2024.1/edge
+            config:
+              snap-channel: 2024.1/edge
+          sunbeam-machine:
+            channel: 2024.1/edge
+          tempest-k8s:
+            channel: 2024.1/edge
+          microceph:
+            channel: reef/edge
+    owner: root:root
+    permissions: "0666"
+    path: /usr/local/share/manifest.yaml
 runcmd:
   - sudo -u ubuntu bash /usr/local/share/init.sh
